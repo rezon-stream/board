@@ -109,7 +109,7 @@ export const App = () => {
           </button>
           <a
             className="github"
-            href="https://github.com/longday/pattaya-stream"
+            href="https://github.com/rezon-stream/board"
             target="_blank"
             rel="noreferrer"
             aria-label="Исходники на GitHub"
