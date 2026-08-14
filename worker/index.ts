@@ -4,7 +4,7 @@ import type { ChannelStatus, Probe } from '../src/lib/status';
 /** With this User-Agent the canonical link sits in the first ~250 bytes instead of byte ~685000. */
 const USER_AGENT = 'Twitterbot/1.0';
 const HEAD_BYTES = 8192;
-const TTL_SECONDS = 60;
+const TTL_SECONDS = 120;
 
 const parseHead = (head: string): Probe => {
   const canonical = head.match(/<link rel="canonical" href="([^"]*)"/)?.[1];

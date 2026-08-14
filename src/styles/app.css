@@ -32,10 +32,25 @@ main {
   margin: 0;
 }
 
+.brand,
 .toggles {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.polling {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2f6fdb;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.15;
+  }
 }
 
 .github {

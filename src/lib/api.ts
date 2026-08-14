@@ -1,7 +1,7 @@
 import type { ChannelStatus } from './status';
 
 /** Matches the Worker cache TTL: polling faster cannot change the answer. */
-export const POLL_MS = 60_000;
+export const POLL_MS = 120_000;
 
 export const fetchStatuses = async (): Promise<ChannelStatus[]> => {
   const response = await fetch('/api/live');
