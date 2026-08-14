@@ -9,7 +9,7 @@
     // Everything except /api/* is served as static assets, bypassing the Worker
     // and its request quota.
     "run_worker_first": ["/api/*"]
-  }
-  // Add the custom domain here once the zone is set up in Cloudflare:
-  // "routes": [{ "pattern": "stream.example.com", "custom_domain": true }]
+  },
+  // Cloudflare creates and keeps the DNS record for a custom domain itself.
+  "routes": [{ "pattern": "board.rezon.stream", "custom_domain": true }]
 }
