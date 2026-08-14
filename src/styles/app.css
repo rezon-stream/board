@@ -32,6 +32,11 @@ main {
   margin: 0;
 }
 
+.toggles {
+  display: flex;
+  gap: 8px;
+}
+
 .notice {
   margin: var(--gap) 0;
   color: #9aa2ab;
@@ -48,10 +53,21 @@ main {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(var(--columns), 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--gap);
   flex: 1;
   min-width: 0;
+}
+
+/* The active camera takes the full row and pushes the rest into a strip below it. */
+.grid.zoomed {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid.zoomed .cell.active {
+  grid-column: 1 / -1;
+  /* Regardless of which slot it sits in, the active camera is placed first. */
+  order: -1;
 }
 
 .cell {
@@ -70,7 +86,7 @@ main {
   align-self: stretch;
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: #0f0f0f;
 }
 
 .chat iframe {

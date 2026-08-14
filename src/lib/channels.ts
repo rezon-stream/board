@@ -5,20 +5,14 @@ export type Channel = {
   readonly title: string;
 };
 
-/**
- * Curated camera list. Order is priority: when more channels are live than the grid
- * holds, the first ones win.
- *
- * PLACEHOLDER: these are round-the-clock channels convenient for checking the layout.
- * Replace with the Pattaya cameras.
- */
+/** Curated camera list; the order is the order of the picker. */
 export const CHANNELS: readonly Channel[] = [
-  { id: '@RandomlyEntertained21', title: 'Pattaya Beach Road' },
-  { id: '@LofiGirl', title: 'Lofi Girl' },
-  { id: '@SkyNews', title: 'Sky News' },
-  { id: '@NASA', title: 'NASA' },
-  { id: '@aljazeeraenglish', title: 'Al Jazeera' },
-  { id: '@ABCNews', title: 'ABC News' },
-  { id: '@bangkokandmore', title: 'Bangkok and More' },
-  { id: '@JohnnyStrides', title: 'Johnny Strides' },
+  // Percent-encoded on purpose: the handle is Cyrillic (@СтасКирбитов-к7е).
+  { id: '@%D0%A1%D1%82%D0%B0%D1%81%D0%9A%D0%B8%D1%80%D0%B1%D0%B8%D1%82%D0%BE%D0%B2-%D0%BA7%D0%B5', title: 'Stas Pattaya' },
+  { id: '@PattayaParadize', title: 'Pattaya near Paradize' },
+  { id: '@Milanko_Pattaya_lifestyle', title: 'Milan Podzimek' },
+  { id: '@Rezon.online', title: '👑 Rezon IRL 👑' },
+  { id: '@handovskaya', title: 'Та самая Эрика' },
+  { id: '@saint_aratu', title: 'Похождения Артурия' },
+  { id: '@NZTima', title: 'HappyTimeTtimma' },
 ];
