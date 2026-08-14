@@ -151,7 +151,7 @@ main {
 
 .idle,
 .add,
-.picker {
+.cell .tile:has(.picker) {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -173,6 +173,43 @@ main {
 }
 
 .picker {
-  text-align: center;
-  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.bar button,
+.picker-list button {
+  background: #1c2024;
+  color: #e8eaed;
+  border: 1px solid #2c3238;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.bar button[aria-pressed='true'] {
+  background: #2f6fdb;
+  border-color: #2f6fdb;
+}
+
+dialog {
+  border: 1px solid #2c3238;
+  border-radius: 10px;
+  background: #16191c;
+  color: #9aa2ab;
+}
+
+dialog::backdrop {
+  background: #000c;
 }

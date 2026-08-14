@@ -1,19 +1,37 @@
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { POLL_MS, fetchStatuses } from '../lib/api';
-import { CHANNELS } from '../lib/channels';
+import { CHANNELS, type Channel } from '../lib/channels';
 import { MAX_CHANNELS, readChannels, writeChannels } from '../lib/storage';
 import type { ChannelStatus } from '../lib/status';
 import { Chat } from './Chat';
 import { Tile } from './Tile';
 
-const columnsFor = (count: number): number => (count <= 1 ? 1 : 2);
+// A cell holding both a player and a chat needs the full width to stay readable.
+const columnsFor = (count: number, inlineChats: boolean): number =>
+  count <= 1 || inlineChats ? 1 : 2;
+
+type PickerProps = { channels: readonly Channel[]; onPick: (id: string) => void };
+
+const Picker = ({ channels, onPick }: PickerProps) => (
+  <div className="picker">
+    <span className="picker-title">+ Добавить канал</span>
+    <div className="picker-list">
+      {channels.map((channel) => (
+        <button key={channel.id} onClick={() => onPick(channel.id)}>
+          {channel.title}
+        </button>
+      ))}
+    </div>
+  </div>
+);
 
 export const App = () => {
   const [statuses, setStatuses] = useState<ChannelStatus[]>();
   const [error, setError] = useState<string>();
   const [chosen, setChosen] = useState<string[]>(readChannels);
   const [soloed, setSoloed] = useState<string>();
-  const [adding, setAdding] = useState(false);
+  const [chatShown, setChatShown] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     let stopped = false;
@@ -56,9 +74,14 @@ export const App = () => {
     writeChannels(next);
   };
 
+  const add = (id: string) => {
+    change([...chosen, id]);
+    dialog.current?.close();
+  };
+
   const soloedStatus = cells.find(({ channel }) => channel.id === soloed)?.status;
   // Beyond two cameras a chat next to every tile leaves neither readable.
-  const chatsFit = cells.length <= 2;
+  const inlineChats = chatShown && cells.length <= 2;
   const available = CHANNELS.filter((channel) => !chosen.includes(channel.id));
   const slotFree = chosen.length < MAX_CHANNELS && available.length > 0;
 
@@ -66,6 +89,9 @@ export const App = () => {
     <main>
       <header className="bar">
         <h1>Pattaya Stream</h1>
+        <button aria-pressed={chatShown} onClick={() => setChatShown((shown) => !shown)}>
+          Чат
+        </button>
       </header>
 
       {error !== undefined && <p className="notice error">Не удалось опросить каналы: {error}</p>}
@@ -73,7 +99,11 @@ export const App = () => {
       <div className="stage">
         <section
           className="grid"
-          style={{ '--columns': columnsFor(cells.length + (slotFree ? 1 : 0)) } as CSSProperties}
+          style={
+            {
+              '--columns': columnsFor(cells.length + (slotFree ? 1 : 0), inlineChats),
+            } as CSSProperties
+          }
         >
           {cells.map(({ channel, status }) => (
             <div key={channel.id} className="cell">
@@ -104,34 +134,24 @@ export const App = () => {
                   </button>
                 </div>
               )}
-              {chatsFit && status?.state === 'live' && <Chat videoId={status.videoId} />}
+              {inlineChats && status?.state === 'live' && <Chat videoId={status.videoId} />}
             </div>
           ))}
 
           {slotFree && (
             <div className="cell">
-              {adding ? (
-                <select
-                  className="tile picker"
-                  autoFocus
-                  defaultValue=""
-                  onChange={({ target }) => {
-                    change([...chosen, target.value]);
-                    setAdding(false);
-                  }}
-                  onBlur={() => setAdding(false)}
-                >
-                  <option value="" disabled>
-                    Какой канал?
-                  </option>
-                  {available.map((channel) => (
-                    <option key={channel.id} value={channel.id}>
-                      {channel.title}
-                    </option>
-                  ))}
-                </select>
+              {/* The empty grid is one full-width cell, so the list fits in it; once tiles
+                  take the space, the same list moves into a dialog. */}
+              {cells.length === 0 ? (
+                <div className="tile">
+                  <Picker channels={available} onPick={add} />
+                </div>
               ) : (
-                <button className="tile add" aria-label="Добавить канал" onClick={() => setAdding(true)}>
+                <button
+                  className="tile add"
+                  aria-label="Добавить канал"
+                  onClick={() => dialog.current?.showModal()}
+                >
                   +
                 </button>
               )}
@@ -139,8 +159,21 @@ export const App = () => {
           )}
         </section>
 
-        {!chatsFit && soloedStatus?.state === 'live' && <Chat videoId={soloedStatus.videoId} />}
+        {chatShown && !inlineChats && soloedStatus?.state === 'live' && (
+          <Chat videoId={soloedStatus.videoId} />
+        )}
       </div>
+
+      {slotFree && cells.length > 0 && (
+        <dialog
+          ref={dialog}
+          onClick={({ target, currentTarget }) => {
+            if (target === currentTarget) currentTarget.close();
+          }}
+        >
+          <Picker channels={available} onPick={add} />
+        </dialog>
+      )}
     </main>
   );
 };
