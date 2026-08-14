@@ -141,3 +141,15 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Astro generated types
+.astro/
+
+# Wrangler local state and build cache
+.wrangler/
+
+# Everything the containers produce: dependencies, caches, build output, worker state
+.runtime/
+
+# Working notes, not for publication
+GRILLING.md

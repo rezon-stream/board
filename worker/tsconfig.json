@@ -1,0 +1,9 @@
+{
+  "extends": "../node_modules/astro/tsconfigs/strict.json",
+  "include": ["**/*.ts", "../src/lib/channels.ts"],
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["@cloudflare/workers-types"],
+    "noEmit": true
+  }
+}

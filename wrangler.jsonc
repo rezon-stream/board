@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pattaya-stream",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-13",
+  "assets": {
+    "directory": "./dist/",
+    "not_found_handling": "404-page",
+    // Everything except /api/* is served as static assets, bypassing the Worker
+    // and its request quota.
+    "run_worker_first": ["/api/*"]
+  }
+  // Add the custom domain here once the zone is set up in Cloudflare:
+  // "routes": [{ "pattern": "stream.example.com", "custom_domain": true }]
+}

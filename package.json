@@ -1,0 +1,27 @@
+{
+  "name": "pattaya-stream",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev --host --ignore-lock",
+    "build": "astro build",
+    "check": "astro check && tsc --noEmit -p worker/tsconfig.json",
+    "preview": "npm run build && wrangler dev --ip 0.0.0.0",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/react": "6.0.2",
+    "astro": "7.2.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@cloudflare/workers-types": "5.20260813.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@types/youtube": "0.3.0",
+    "typescript": "6.0.3",
+    "wrangler": "4.122.0"
+  }
+}

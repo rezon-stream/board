@@ -1,0 +1,54 @@
+x-dev: &dev
+  build:
+    context: .
+    dockerfile_inline: |
+      # Alpine will not do: workerd needs glibc.
+      FROM node:24.19.0
+      RUN mkdir -p /app && chmod 0777 /app /home/node
+      USER node
+  working_dir: /app
+  user: '${DOCKER_USER}' # written by dev.sh into .env
+  environment:
+    HOME: /home/node # the host uid has no passwd entry
+  volumes:
+    - ./src:/app/src:ro
+    - ./worker:/app/worker:ro
+    - ./astro.config.mjs:/app/astro.config.mjs:ro
+    - ./tsconfig.json:/app/tsconfig.json:ro
+    - ./wrangler.jsonc:/app/wrangler.jsonc:ro
+    - ./package.json:/app/package.json:ro
+    - ./package-lock.json:/app/package-lock.json:ro
+    - ./.npmrc:/app/.npmrc:ro
+    - ./.runtime/node_modules:/app/node_modules
+    - ./.runtime/astro:/app/.astro
+    - ./.runtime/dist:/app/dist
+    - ./.runtime/wrangler:/app/.wrangler
+    - ./.runtime/npm:/home/node/.npm
+    - ./.runtime/config:/home/node/.config
+
+services:
+  api:
+    <<: *dev
+    command: sh -c 'npm ci && npm run preview'
+    ports:
+      - '8787:8787'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8787/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      start_period: 5m
+      start_interval: 2s # each steady-state probe is a GET in the logs
+      interval: 5m
+      timeout: 5s
+      retries: 3
+
+  web:
+    <<: *dev
+    command: npm run dev
+    ports:
+      - '4321:4321'
+    depends_on:
+      api: # one node_modules mount for both, two installs would collide
+        condition: service_healthy
