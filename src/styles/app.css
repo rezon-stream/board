@@ -34,7 +34,17 @@ main {
 
 .toggles {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.github {
+  display: flex;
+  color: #9aa2ab;
+}
+
+.github:hover {
+  color: #e8eaed;
 }
 
 .notice {
