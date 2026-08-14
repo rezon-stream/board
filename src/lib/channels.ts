@@ -17,8 +17,15 @@ export const CHANNELS: readonly Channel[] = [
   },
   { id: '@PattayaParadize', key: 'paradize', title: 'Pattaya near Paradize' },
   { id: '@Milanko_Pattaya_lifestyle', key: 'milan', title: 'Milan Podzimek' },
-  { id: '@Rezon.online', key: 'rezon', title: '👑 Rezon IRL 👑' },
   { id: '@handovskaya', key: 'erika', title: 'Та самая Эрика' },
+  { id: '@Rezon.online', key: 'rezon', title: '👑 Rezon IRL 👑' },
   { id: '@saint_aratu', key: 'artur', title: 'Похождения Артурия' },
   { id: '@NZTima', key: 'tima', title: 'HappyTimeTtimma' },
+  { id: '@Ms.Yanawitch', key: 'yana', title: 'Яна Паттайя' },
+  // Cyrillic handle again: @ТайскаяЖенщина.
+  {
+    id: '@%D0%A2%D0%B0%D0%B9%D1%81%D0%BA%D0%B0%D1%8F%D0%96%D0%B5%D0%BD%D1%89%D0%B8%D0%BD%D0%B0',
+    key: 'thai',
+    title: 'Тайская Женщина',
+  },
 ];

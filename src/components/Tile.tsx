@@ -8,11 +8,14 @@ type Props = {
   unmuted: boolean;
   onSelect: () => void;
   onRemove: () => void;
+  onEnded: () => void;
 };
 
-export const Tile = ({ title, videoId, active, unmuted, onSelect, onRemove }: Props) => {
+export const Tile = ({ title, videoId, active, unmuted, onSelect, onRemove, onEnded }: Props) => {
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<YT.Player>(undefined);
+  const ended = useRef(onEnded);
+  ended.current = onEnded;
 
   useEffect(() => {
     let cancelled = false;
@@ -25,6 +28,13 @@ export const Tile = ({ title, videoId, active, unmuted, onSelect, onRemove }: Pr
       player.current = new YT.Player(mount, {
         videoId,
         playerVars: { autoplay: 1, mute: 1, playsinline: 1, rel: 0, origin: location.origin },
+        // The player learns that the broadcast is over long before the next poll would.
+        events: {
+          onStateChange: ({ data }) => {
+            if (data === YT.PlayerState.ENDED) ended.current();
+          },
+          onError: () => ended.current(),
+        },
       });
     });
 

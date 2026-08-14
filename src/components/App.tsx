@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { POLL_MS, fetchStatuses } from '../lib/api';
 import { CHANNELS, type Channel } from '../lib/channels';
 import { type View, readView, writeView } from '../lib/view';
@@ -39,33 +39,32 @@ export const App = () => {
     [slots, chatShown, zoomed, sound, soloed],
   );
 
+  const poll = useCallback(async (fresh?: string) => {
+    setPolling(true);
+    try {
+      const next = await fetchStatuses(fresh);
+      setStatuses(next);
+      setError(undefined);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setPolling(false);
+    }
+  }, []);
+
   useEffect(() => {
-    let stopped = false;
-    const poll = async () => {
-      if (document.hidden) return;
-      setPolling(true);
-      try {
-        const next = await fetchStatuses();
-        if (stopped) return;
-        setStatuses(next);
-        setError(undefined);
-      } catch (cause) {
-        if (!stopped) setError(cause instanceof Error ? cause.message : String(cause));
-      } finally {
-        if (!stopped) setPolling(false);
-      }
+    const tick = () => {
+      if (!document.hidden) void poll();
     };
 
-    const onVisible = () => void poll();
-    void poll();
-    const timer = window.setInterval(onVisible, POLL_MS);
-    document.addEventListener('visibilitychange', onVisible);
+    tick();
+    const timer = window.setInterval(tick, POLL_MS);
+    document.addEventListener('visibilitychange', tick);
     return () => {
-      stopped = true;
       window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
+      document.removeEventListener('visibilitychange', tick);
     };
-  }, []);
+  }, [poll]);
 
   const cells = useMemo(
     () =>
@@ -152,6 +151,7 @@ export const App = () => {
                     unmuted={active && sound}
                     onSelect={() => setSoloed((current) => (current === channel.id ? undefined : channel.id))}
                     onRemove={remove}
+                    onEnded={() => void poll(channel.key)}
                   />
                 ) : (
                   <div className="tile idle">

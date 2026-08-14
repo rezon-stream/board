@@ -5,6 +5,7 @@ import type { ChannelStatus, Probe } from '../src/lib/status';
 const USER_AGENT = 'Twitterbot/1.0';
 const HEAD_BYTES = 8192;
 const TTL_SECONDS = 120;
+const TTL_LIVE_SECONDS = 600;
 
 const parseHead = (head: string): Probe => {
   const canonical = head.match(/<link rel="canonical" href="([^"]*)"/)?.[1];
@@ -42,17 +43,23 @@ const probe = async (id: string): Promise<Probe> => {
   return parseHead(await readHead(response.body));
 };
 
+const cacheKey = (id: string) =>
+  new Request(`https://pattaya-stream.internal/live/${encodeURIComponent(id)}`);
+
 /** The cache is per data center, so every colo goes through a cold fetch, not just the first one. */
 const probeCached = async (id: string): Promise<Probe> => {
-  const key = new Request(`https://pattaya-stream.internal/live/${encodeURIComponent(id)}`);
+  const key = cacheKey(id);
   const hit = await caches.default.match(key);
   if (hit !== undefined) return hit.json<Probe>();
 
   const result = await probe(id);
+  // A running broadcast keeps its videoId for hours, so it is re-probed rarely; a browser
+  // that watches it end drops this entry and brings the channel back to the short cycle.
+  const ttl = result.state === 'live' ? TTL_LIVE_SECONDS : TTL_SECONDS;
   await caches.default.put(
     key,
     new Response(JSON.stringify(result), {
-      headers: { 'content-type': 'application/json', 'cache-control': `max-age=${TTL_SECONDS}` },
+      headers: { 'content-type': 'application/json', 'cache-control': `max-age=${ttl}` },
     }),
   );
   return result;
@@ -60,9 +67,13 @@ const probeCached = async (id: string): Promise<Probe> => {
 
 export default {
   fetch: async (request) => {
-    if (new URL(request.url).pathname !== '/api/live') {
+    const url = new URL(request.url);
+    if (url.pathname !== '/api/live') {
       return new Response('Not found', { status: 404 });
     }
+    const stale = CHANNELS.find(({ key }) => key === url.searchParams.get('fresh'));
+    if (stale !== undefined) await caches.default.delete(cacheKey(stale.id));
+
     const statuses: ChannelStatus[] = await Promise.all(
       CHANNELS.map(async ({ id }) => ({ id, ...(await probeCached(id)) })),
     );
