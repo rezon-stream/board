@@ -14,7 +14,7 @@ export type View = {
 };
 
 const byKey = (key: string) => CHANNELS.find((channel) => channel.key === key);
-const keyOf = (id: string) => CHANNELS.find((channel) => channel.id === id)?.key ?? '';
+export const keyOf = (id: string): string => CHANNELS.find((channel) => channel.id === id)?.key ?? '';
 
 export const readView = (): View => {
   const params = new URLSearchParams(location.search);

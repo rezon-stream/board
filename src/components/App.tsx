@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { track } from '../lib/analytics';
 import { POLL_MS, fetchStatuses } from '../lib/api';
 import { CHANNELS, type Channel } from '../lib/channels';
-import { type View, readView, writeView } from '../lib/view';
+import { type View, keyOf, readView, writeView } from '../lib/view';
 import type { ChannelStatus } from '../lib/status';
 import { Chat } from './Chat';
 import { Tile } from './Tile';
@@ -38,6 +39,12 @@ export const App = () => {
     () => writeView({ slots, chat: chatShown, zoom: zoomed, sound, solo: soloed }),
     [slots, chatShown, zoomed, sound, soloed],
   );
+
+  // A shared link can arrive with a channel already active, and that activation never
+  // passes through a click.
+  useEffect(() => {
+    if (initial.solo !== undefined) track('solo_from_link', keyOf(initial.solo));
+  }, [initial.solo]);
 
   const poll = useCallback(async (fresh?: string) => {
     setPolling(true);
@@ -83,6 +90,7 @@ export const App = () => {
   };
 
   const add = (id: string) => {
+    track('add_channel', keyOf(id));
     setSlots(slots.map((current, index) => (index === target ? id : current)));
     dialog.current?.close();
   };
@@ -150,7 +158,10 @@ export const App = () => {
                     videoId={status.videoId}
                     active={active}
                     unmuted={active && sound}
-                    onSelect={() => setSoloed((current) => (current === channel.id ? undefined : channel.id))}
+                    onSelect={() => {
+                      if (!active) track('select_channel', channel.key);
+                      setSoloed((current) => (current === channel.id ? undefined : channel.id));
+                    }}
                     onRemove={remove}
                     onEnded={() => void poll(channel.key)}
                   />
