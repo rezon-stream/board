@@ -9,17 +9,16 @@ import '../styles/app.css';
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pattaya Stream</title>
-    <!-- Google tag (gtag.js); is:inline keeps Astro from bundling it into a module,
-         where gtag would stop being global. -->
+    {/* Google tag (gtag.js). Bundled by Astro, so the snippet lands in a module scope:
+        gtag is assigned to window by hand instead of being a bare declaration. */}
     <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-YD0307VY2D"></script>
-    <script is:inline>
+    <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag('js', new Date());
-
-      gtag('config', 'G-YD0307VY2D');
+      window.gtag = function gtag() {
+        window.dataLayer.push(arguments);
+      };
+      window.gtag('js', new Date());
+      window.gtag('config', 'G-YD0307VY2D');
     </script>
   </head>
   <body>
