@@ -176,6 +176,15 @@ main {
   font-size: 13px;
 }
 
+.tile-volume {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 96px;
+  accent-color: #2f6fdb;
+  cursor: pointer;
+}
+
 .remove {
   position: absolute;
   top: 6px;

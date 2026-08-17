@@ -146,6 +146,7 @@ export const App = () => {
                 {status?.state === 'live' ? (
                   <Tile
                     title={channel.title}
+                    channelKey={channel.key}
                     videoId={status.videoId}
                     active={active}
                     unmuted={active && sound}
