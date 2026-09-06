@@ -16,6 +16,9 @@ body {
 
 main {
   padding: var(--gap);
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
 }
 
 .bar {
@@ -24,6 +27,7 @@ main {
   justify-content: space-between;
   gap: var(--gap);
   margin-bottom: var(--gap);
+  flex-shrink: 0;
 }
 
 .bar h1 {
@@ -74,25 +78,52 @@ main {
 .stage {
   display: flex;
   gap: var(--gap);
+  flex: 1;
+  min-height: 0;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  align-content: start;
   gap: var(--gap);
+  align-items: start;
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
-/* The active camera takes the full row and pushes the rest into a strip below it. */
+/* Keep player nodes mounted while CSS moves the active channel above the strip. */
 .grid.zoomed {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(max(80px, calc((100% + var(--gap)) / var(--channel-count) - var(--gap))), 1fr));
+  grid-template-rows: minmax(240px, 1fr);
+  grid-auto-rows: max-content;
+  align-content: stretch;
 }
 
 .grid.zoomed .cell.active {
   grid-column: 1 / -1;
-  /* Regardless of which slot it sits in, the active camera is placed first. */
+  order: -2;
+  align-self: stretch;
+}
+
+.cell.started {
+  grid-column: span 2;
   order: -1;
+}
+
+.grid.zoomed .cell:not(.active) {
+  grid-column: auto;
+  order: 0;
+}
+
+.grid.zoomed .cell.active .tile {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.grid.zoomed .cell:not(.active) .tile {
+  min-height: 96px;
 }
 
 .cell {
@@ -121,13 +152,21 @@ main {
 }
 
 @media (max-width: 700px) {
-  .stage,
-  .cell {
+  .bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toggles {
+    flex-wrap: wrap;
+  }
+
+  .stage {
     flex-direction: column;
   }
 
   .grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .chat {
@@ -171,9 +210,44 @@ main {
   box-shadow: inset 0 0 0 2px #2f6fdb;
 }
 
+.playback-status {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  max-width: calc(100% - 44px);
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: #000a;
+  color: #fff;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.playback-start {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  overflow-wrap: anywhere;
+}
+
+.tile-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tile-sound {
   color: #cfd4d9;
   font-size: 13px;
+}
+
+.grid.zoomed .cell:not(.active) .tile-sound {
+  display: none;
 }
 
 .tile-volume {
@@ -185,7 +259,7 @@ main {
   cursor: pointer;
 }
 
-.remove {
+.stop {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -199,9 +273,7 @@ main {
   cursor: pointer;
 }
 
-.idle,
-.add,
-.cell .tile:has(.picker) {
+.idle {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -211,34 +283,24 @@ main {
   background: #16191c;
   color: #9aa2ab;
   font: inherit;
+  padding: 6px;
+  text-align: center;
+  min-height: 96px;
+}
+
+.idle > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .idle-state {
   font-size: 13px;
 }
 
-.add {
-  font-size: 32px;
-  cursor: pointer;
-}
-
-.picker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-}
-
-.picker-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-
 .bar button,
-.picker-list button {
+.start {
   background: #1c2024;
   color: #e8eaed;
   border: 1px solid #2c3238;
@@ -248,18 +310,13 @@ main {
   font: inherit;
 }
 
+.start {
+  max-width: 100%;
+  padding: 6px;
+  font-size: 12px;
+}
+
 .bar button[aria-pressed='true'] {
   background: #2f6fdb;
   border-color: #2f6fdb;
-}
-
-dialog {
-  border: 1px solid #2c3238;
-  border-radius: 10px;
-  background: #16191c;
-  color: #9aa2ab;
-}
-
-dialog::backdrop {
-  background: #000c;
 }

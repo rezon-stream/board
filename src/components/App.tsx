@@ -1,43 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { track } from '../lib/analytics';
 import { POLL_MS, fetchStatuses } from '../lib/api';
-import { CHANNELS, type Channel } from '../lib/channels';
+import { CHANNELS } from '../lib/channels';
 import { type View, keyOf, readView, writeView } from '../lib/view';
 import type { ChannelStatus } from '../lib/status';
 import { Chat } from './Chat';
 import { Tile } from './Tile';
 
-type PickerProps = { channels: readonly Channel[]; onPick: (id: string) => void };
-
-const Picker = ({ channels, onPick }: PickerProps) => (
-  <div className="picker">
-    <span className="picker-title">+ Добавить канал</span>
-    <div className="picker-list">
-      {channels.map((channel) => (
-        <button key={channel.id} onClick={() => onPick(channel.id)}>
-          {channel.title}
-        </button>
-      ))}
-    </div>
-  </div>
-);
-
-export const App = () => {
+export const App = (): ReactElement => {
   const [statuses, setStatuses] = useState<ChannelStatus[]>();
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string>();
   const initial = useMemo(readView, []);
-  const [slots, setSlots] = useState<View['slots']>(initial.slots);
+  const [started, setStarted] = useState<View['started']>(initial.started);
   const [soloed, setSoloed] = useState(initial.solo);
   const [chatShown, setChatShown] = useState(initial.chat);
   const [zoomed, setZoomed] = useState(initial.zoom);
   const [sound, setSound] = useState(initial.sound);
-  const [target, setTarget] = useState<number>();
-  const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(
-    () => writeView({ slots, chat: chatShown, zoom: zoomed, sound, solo: soloed }),
-    [slots, chatShown, zoomed, sound, soloed],
+    () => writeView({ started, chat: chatShown, zoom: zoomed, sound, solo: soloed }),
+    [started, chatShown, zoomed, sound, soloed],
   );
 
   // A shared link can arrive with a channel already active, and that activation never
@@ -73,30 +56,20 @@ export const App = () => {
     };
   }, [poll]);
 
-  const cells = useMemo(
-    () =>
-      slots.map((id) => {
-        const channel = CHANNELS.find((candidate) => candidate.id === id);
-        return channel === undefined
-          ? undefined
-          : { channel, status: statuses?.find((candidate) => candidate.id === id) };
-      }),
-    [slots, statuses],
-  );
-
-  const openPicker = (index: number) => {
-    setTarget(index);
-    dialog.current?.showModal();
+  const start = (id: string) => {
+    track('start_channel', keyOf(id));
+    setStarted((current) => (current.includes(id) ? current : [...current, id]));
   };
 
-  const add = (id: string) => {
-    track('add_channel', keyOf(id));
-    setSlots(slots.map((current, index) => (index === target ? id : current)));
-    dialog.current?.close();
+  const stop = (id: string) => {
+    setStarted((current) => current.filter((candidate) => candidate !== id));
+    setSoloed((current) => (current === id ? undefined : current));
   };
 
-  const soloedStatus = cells.find((cell) => cell?.channel.id === soloed)?.status;
-  const available = CHANNELS.filter((channel) => !slots.includes(channel.id));
+  const soloedStatus = started.includes(soloed ?? '')
+    ? statuses?.find((status) => status.id === soloed)
+    : undefined;
+  const focused = zoomed && soloedStatus?.state === 'live';
 
   return (
     <main>
@@ -132,26 +105,19 @@ export const App = () => {
       {error !== undefined && <p className="notice error">Не удалось опросить каналы: {error}</p>}
 
       <div className="stage">
-        <section className={zoomed && soloed !== undefined ? 'grid zoomed' : 'grid'}>
-          {cells.map((cell, index) => {
-            if (cell === undefined) {
-              return (
-                <div key={`slot-${index}`} className="cell">
-                  {available.length > 0 && (
-                    <button className="tile add" aria-label="Добавить канал" onClick={() => openPicker(index)}>
-                      +
-                    </button>
-                  )}
-                </div>
-              );
-            }
-
-            const { channel, status } = cell;
-            const active = soloed === channel.id;
-            const remove = () => setSlots(slots.map((id, at) => (at === index ? null : id)));
+        <section
+          className={focused ? 'grid zoomed' : 'grid'}
+          style={{ '--channel-count': Math.max(1, CHANNELS.length - 1) } as CSSProperties}
+          aria-label="Каналы"
+        >
+          {CHANNELS.map((channel) => {
+            const status = statuses?.find((candidate) => candidate.id === channel.id);
+            const isStarted = started.includes(channel.id);
+            const hasPlayer = isStarted && status?.state === 'live';
+            const active = hasPlayer && soloed === channel.id;
             return (
-              <div key={channel.id} className={active ? 'cell active' : 'cell'}>
-                {status?.state === 'live' ? (
+              <div key={channel.id} className={`cell${hasPlayer ? ' started' : ''}${active ? ' active' : ''}`}>
+                {hasPlayer ? (
                   <Tile
                     title={channel.title}
                     channelKey={channel.key}
@@ -162,8 +128,11 @@ export const App = () => {
                       if (!active) track('select_channel', channel.key);
                       setSoloed((current) => (current === channel.id ? undefined : channel.id));
                     }}
-                    onRemove={remove}
-                    onEnded={() => void poll(channel.key)}
+                    onStop={() => stop(channel.id)}
+                    onEnded={() => {
+                      stop(channel.id);
+                      void poll(channel.key);
+                    }}
                   />
                 ) : (
                   <div className="tile idle">
@@ -173,11 +142,20 @@ export const App = () => {
                         ? 'опрашиваем…'
                         : status.state === 'offline'
                           ? 'не в эфире'
-                          : 'не удалось опросить'}
+                          : status.state === 'live'
+                            ? 'в эфире'
+                            : 'не удалось опросить'}
                     </span>
-                    <button className="remove" aria-label={`Убрать ${channel.title}`} onClick={remove}>
-                      ×
-                    </button>
+                    {status?.state === 'live' && (
+                      <button className="start" aria-label={`Запустить ${channel.title}`} onClick={() => start(channel.id)}>
+                        Запустить
+                      </button>
+                    )}
+                    {isStarted && (
+                      <button className="stop" aria-label={`Остановить ${channel.title}`} onClick={() => stop(channel.id)}>
+                        ×
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -187,17 +165,6 @@ export const App = () => {
 
         {chatShown && soloedStatus?.state === 'live' && <Chat videoId={soloedStatus.videoId} />}
       </div>
-
-      {available.length > 0 && (
-        <dialog
-          ref={dialog}
-          onClick={({ target: clicked, currentTarget }) => {
-            if (clicked === currentTarget) currentTarget.close();
-          }}
-        >
-          <Picker channels={available} onPick={add} />
-        </dialog>
-      )}
     </main>
   );
 };

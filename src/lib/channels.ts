@@ -7,7 +7,7 @@ export type Channel = {
   readonly title: string;
 };
 
-/** Curated camera list; the order is the order of the picker. */
+/** Curated camera list; the order is the order of the board. */
 export const CHANNELS: readonly Channel[] = [
   // Percent-encoded on purpose: the handle is Cyrillic (@СтасКирбитов-к7е).
   {
