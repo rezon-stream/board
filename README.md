@@ -1,26 +1,21 @@
-# pattaya-stream
+# Pattaya Stream
 
-Сетка живых YouTube-трансляций Паттайи: статика на Astro + React, статусы каналов
-отдаёт Cloudflare Worker (`/api/live`).
+A single dashboard for watching live YouTube broadcasts from Pattaya.
 
-Все каналы видны сразу. «Запустить» открывает плеер; нажатие на видео выбирает
-активный канал для звука и чата. «Увеличивать активный» разворачивает его,
-оставляя остальные окна компактными. Остановка возвращает карточку канала.
-Запущенные каналы и настройки сохраняются в адресе страницы.
+## Features
 
-Плеер показывает «Загружается…», «Воспроизводится» или «Не запущен».
-В состоянии «Не запущен» доступна кнопка «Воспроизвести» для ручного запуска.
+- See all available channels in one place.
+- Start and stop individual players.
+- Select the active channel for sound and chat.
+- Enlarge the active stream while keeping the others visible.
+- Reorder channels and share the current view through the page URL.
 
-## Локальный запуск
+## Local development
+
+Start the local environment:
 
     ./dev.sh
 
-Скрипт гасит прошлый стенд и поднимает два контейнера:
-
-- http://localhost:8787 — собранная статика и `/api/live` в workerd, том же рантайме,
-  что в проде;
-- http://localhost:4321 — Astro с HMR, `/api/live` проксируется в первый.
-
-Разовые команды идут в тот же контейнер:
+Run project checks:
 
     docker compose exec api npm run check

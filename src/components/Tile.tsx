@@ -7,12 +7,23 @@ type Props = {
   videoId: string;
   active: boolean;
   unmuted: boolean;
+  controls: boolean;
   onSelect: () => void;
   onStop: () => void;
   onEnded: () => void;
 };
 
-export const Tile = ({ title, channelKey, videoId, active, unmuted, onSelect, onStop, onEnded }: Props): ReactElement => {
+export const Tile = ({
+  title,
+  channelKey,
+  videoId,
+  active,
+  unmuted,
+  controls,
+  onSelect,
+  onStop,
+  onEnded,
+}: Props): ReactElement => {
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<YT.Player>(undefined);
   const [playback, setPlayback] = useState<'loading' | 'playing' | 'idle'>('loading');
@@ -20,6 +31,8 @@ export const Tile = ({ title, channelKey, videoId, active, unmuted, onSelect, on
   ended.current = onEnded;
   const audible = useRef(unmuted);
   audible.current = unmuted;
+  const nativeControls = useRef(controls);
+  nativeControls.current = controls;
   // Broadcasts differ in loudness, so every channel keeps its own level.
   const [volume, setVolume] = useState(() => Number(localStorage.getItem(`volume:${channelKey}`) ?? 100));
   const level = useRef(volume);
@@ -59,8 +72,10 @@ export const Tile = ({ title, channelKey, videoId, active, unmuted, onSelect, on
             if (cancelled) return;
             player.current = target;
             target.setVolume(level.current);
-            if (audible.current) target.unMute();
-            else target.mute();
+            if (!nativeControls.current) {
+              if (audible.current) target.unMute();
+              else target.mute();
+            }
             updatePlayback(target.getPlayerState());
           },
           onStateChange: ({ data }) => updatePlayback(data),
@@ -81,9 +96,10 @@ export const Tile = ({ title, channelKey, videoId, active, unmuted, onSelect, on
   }, [videoId]);
 
   useEffect(() => {
+    if (controls) return;
     if (unmuted) player.current?.unMute();
     else player.current?.mute();
-  }, [unmuted]);
+  }, [controls, unmuted]);
 
   const change = (next: number) => {
     setVolume(next);
@@ -94,38 +110,41 @@ export const Tile = ({ title, channelKey, videoId, active, unmuted, onSelect, on
   return (
     <div className="tile">
       <div ref={host} className="tile-player" />
-      {/* The cross-origin iframe swallows clicks, so selection needs its own overlay. */}
-      <button className="tile-overlay" onClick={onSelect} aria-label={`Выбрать ${title}`} aria-pressed={active}>
-        <span className="tile-title">{title}</span>
-        {!unmuted && <span className="tile-sound">без звука</span>}
-      </button>
-      <span className="playback-status" role="status">
-        {playback === 'playing' ? 'Воспроизводится' : playback === 'loading' ? 'Загружается…' : 'Не запущен'}
-      </span>
-      {playback === 'idle' && (
-        <button
-          className="start playback-start"
-          aria-label={`Воспроизвести ${title}`}
-          onClick={() => player.current?.playVideo()}
-        >
-          Воспроизвести
-        </button>
+      {!controls && (
+        <>
+          <button className="tile-overlay" onClick={onSelect} aria-label={`Выбрать ${title}`} aria-pressed={active}>
+            <span className="tile-title">{title}</span>
+            {!unmuted && <span className="tile-sound">без звука</span>}
+          </button>
+          <span className="playback-status" role="status">
+            {playback === 'playing' ? 'Воспроизводится' : playback === 'loading' ? 'Загружается…' : 'Не запущен'}
+          </span>
+          {playback === 'idle' && (
+            <button
+              className="start playback-start"
+              aria-label={`Воспроизвести ${title}`}
+              onClick={() => player.current?.playVideo()}
+            >
+              Воспроизвести
+            </button>
+          )}
+          {/* Sits outside the overlay button so dragging it does not toggle the selection. */}
+          {unmuted && (
+            <input
+              className="tile-volume"
+              type="range"
+              min={0}
+              max={100}
+              value={volume}
+              aria-label={`Громкость: ${title}`}
+              onChange={({ target }) => change(Number(target.value))}
+            />
+          )}
+          <button className="stop" aria-label={`Остановить ${title}`} onClick={onStop}>
+            ×
+          </button>
+        </>
       )}
-      {/* Sits outside the overlay button so dragging it does not toggle the selection. */}
-      {unmuted && (
-        <input
-          className="tile-volume"
-          type="range"
-          min={0}
-          max={100}
-          value={volume}
-          aria-label={`Громкость: ${title}`}
-          onChange={({ target }) => change(Number(target.value))}
-        />
-      )}
-      <button className="stop" aria-label={`Остановить ${title}`} onClick={onStop}>
-        ×
-      </button>
     </div>
   );
 };

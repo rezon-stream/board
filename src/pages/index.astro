@@ -1,5 +1,6 @@
 ---
 import { App } from '../components/App';
+import favicon from '../assets/favicon.svg';
 import '../styles/app.css';
 ---
 
@@ -9,6 +10,7 @@ import '../styles/app.css';
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pattaya Stream</title>
+    <link rel="icon" type="image/svg+xml" href={favicon.src} />
     {/* Google tag (gtag.js). Bundled by Astro, so the snippet lands in a module scope:
         gtag is assigned to window by hand instead of being a bare declaration. */}
     <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-YD0307VY2D"></script>

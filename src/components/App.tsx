@@ -1,4 +1,15 @@
-import { type CSSProperties, type ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import splashImage from '../assets/Splash.webp';
 import { track } from '../lib/analytics';
 import { POLL_MS, fetchStatuses } from '../lib/api';
 import { CHANNELS } from '../lib/channels';
@@ -6,6 +17,14 @@ import { type View, keyOf, readView, writeView } from '../lib/view';
 import type { ChannelStatus } from '../lib/status';
 import { Chat } from './Chat';
 import { Tile } from './Tile';
+
+const SPLASH_INTERVAL_MS = 24 * 60 * 60 * 1_000;
+const SPLASH_STORAGE_KEY = 'splash:last-shown';
+
+const isSplashDue = (): boolean => {
+  const lastShown = Number(localStorage.getItem(SPLASH_STORAGE_KEY));
+  return !Number.isFinite(lastShown) || Date.now() - lastShown >= SPLASH_INTERVAL_MS;
+};
 
 export const App = (): ReactElement => {
   const [statuses, setStatuses] = useState<ChannelStatus[]>();
@@ -17,10 +36,24 @@ export const App = (): ReactElement => {
   const [chatShown, setChatShown] = useState(initial.chat);
   const [zoomed, setZoomed] = useState(initial.zoom);
   const [sound, setSound] = useState(initial.sound);
+  const [controls, setControls] = useState(false);
+  const [splashShown, setSplashShown] = useState(isSplashDue);
+  const [splashLoaded, setSplashLoaded] = useState(false);
+  const [order, setOrder] = useState<View['order']>(initial.order);
+  const [dragging, setDragging] = useState<string>();
+  const [dragTarget, setDragTarget] = useState<string>();
+  const [orderMessage, setOrderMessage] = useState('');
+  const drag = useRef<{ readonly id: string; readonly pointerId: number } | undefined>(undefined);
+
+  useEffect(() => {
+    if (!splashLoaded) return;
+    const timer = window.setTimeout(() => setSplashShown(false), 1_200);
+    return () => window.clearTimeout(timer);
+  }, [splashLoaded]);
 
   useEffect(
-    () => writeView({ started, chat: chatShown, zoom: zoomed, sound, solo: soloed }),
-    [started, chatShown, zoomed, sound, soloed],
+    () => writeView({ started, chat: chatShown, zoom: zoomed, sound, order, solo: soloed }),
+    [started, chatShown, zoomed, sound, order, soloed],
   );
 
   // A shared link can arrive with a channel already active, and that activation never
@@ -66,13 +99,79 @@ export const App = (): ReactElement => {
     setSoloed((current) => (current === id ? undefined : current));
   };
 
+  const reorder = (source: string, target: string) => {
+    if (source === target) return;
+    setOrder((current) => {
+      const sourceIndex = current.indexOf(source);
+      const targetIndex = current.indexOf(target);
+      if (sourceIndex < 0 || targetIndex < 0) return current;
+      const next = current.filter((id) => id !== source);
+      next.splice(targetIndex, 0, source);
+      return next;
+    });
+  };
+
+  const channelAt = (event: PointerEvent<HTMLButtonElement>): string | undefined =>
+    document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-channel-id]')?.dataset.channelId;
+
+  const cancelDrag = () => {
+    drag.current = undefined;
+    setDragging(undefined);
+    setDragTarget(undefined);
+  };
+
+  const onPointerDown = (event: PointerEvent<HTMLButtonElement>, id: string) => {
+    if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = { id, pointerId: event.pointerId };
+    setDragging(id);
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLButtonElement>, id: string) => {
+    if (drag.current?.id === id && drag.current.pointerId === event.pointerId) setDragTarget(channelAt(event));
+  };
+
+  const onPointerUp = (event: PointerEvent<HTMLButtonElement>, id: string) => {
+    if (drag.current?.id !== id || drag.current.pointerId !== event.pointerId) return;
+    const target = channelAt(event);
+    cancelDrag();
+    reorder(id, target ?? id);
+  };
+
+  const onHandleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, id: string) => {
+    const delta = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : 0;
+    if (delta === 0) return;
+    event.preventDefault();
+    const source = order.indexOf(id);
+    const target = source + delta;
+    if (target < 0 || target >= order.length) return;
+    const next = [...order];
+    [next[source], next[target]] = [next[target], next[source]];
+    setOrder(next);
+    setOrderMessage(`${CHANNELS.find((channel) => channel.id === id)?.title ?? 'Канал'}: позиция ${target + 1} из ${order.length}.`);
+  };
+
   const soloedStatus = started.includes(soloed ?? '')
     ? statuses?.find((status) => status.id === soloed)
     : undefined;
   const focused = zoomed && soloedStatus?.state === 'live';
 
   return (
-    <main>
+    <>
+      {splashShown && (
+        <div className={`splash${splashLoaded ? ' fading' : ''}`} aria-hidden="true">
+          <img
+            src={splashImage.src}
+            alt=""
+            onLoad={() => {
+              localStorage.setItem(SPLASH_STORAGE_KEY, String(Date.now()));
+              setSplashLoaded(true);
+            }}
+            onError={() => setSplashShown(false)}
+          />
+        </div>
+      )}
+      <main inert={splashShown}>
       <header className="bar">
         <div className="brand">
           <h1>Pattaya Stream</h1>
@@ -81,6 +180,9 @@ export const App = (): ReactElement => {
         <div className="toggles">
           <button aria-pressed={sound} onClick={() => setSound((on) => !on)}>
             Звук
+          </button>
+          <button aria-pressed={controls} onClick={() => setControls((shown) => !shown)}>
+            Контролы
           </button>
           <button aria-pressed={chatShown} onClick={() => setChatShown((shown) => !shown)}>
             Чат
@@ -110,13 +212,46 @@ export const App = (): ReactElement => {
           style={{ '--channel-count': Math.max(1, CHANNELS.length - 1) } as CSSProperties}
           aria-label="Каналы"
         >
-          {CHANNELS.map((channel) => {
+          <p id="order-instructions" className="sr-only">
+            Перемещайте канал клавишами со стрелками.
+          </p>
+          <p className="sr-only" aria-live="polite">
+            {orderMessage}
+          </p>
+          {order.map((id) => {
+            const channel = CHANNELS.find((candidate) => candidate.id === id);
+            if (channel === undefined) return null;
             const status = statuses?.find((candidate) => candidate.id === channel.id);
             const isStarted = started.includes(channel.id);
             const hasPlayer = isStarted && status?.state === 'live';
             const active = hasPlayer && soloed === channel.id;
             return (
-              <div key={channel.id} className={`cell${hasPlayer ? ' started' : ''}${active ? ' active' : ''}`}>
+              <div
+                key={channel.id}
+                data-channel-id={channel.id}
+                className={`cell${hasPlayer ? ' started' : ''}${active ? ' active' : ''}${dragging === channel.id ? ' dragging' : ''}${dragTarget === channel.id && dragging !== channel.id ? ' drag-over' : ''}`}
+              >
+                <button
+                  type="button"
+                  className="drag-handle"
+                  aria-label={`Переместить ${channel.title}`}
+                  aria-describedby="order-instructions"
+                  onPointerDown={(event) => onPointerDown(event, channel.id)}
+                  onPointerMove={(event) => onPointerMove(event, channel.id)}
+                  onPointerUp={(event) => onPointerUp(event, channel.id)}
+                  onPointerCancel={cancelDrag}
+                  onLostPointerCapture={() => {
+                    if (drag.current?.id === channel.id) cancelDrag();
+                  }}
+                  onKeyDown={(event) => onHandleKeyDown(event, channel.id)}
+                >
+                  <svg className="drag-handle-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M10 9h4V6h3l-5-5-5 5h3v3zM9 10H6V7l-5 5 5 5v-3h3zm14 2-5-5v3h-3v4h3v3zm-9 3h-4v3H7l5 5 5-5h-3z"
+                    />
+                  </svg>
+                </button>
                 {hasPlayer ? (
                   <Tile
                     title={channel.title}
@@ -124,6 +259,7 @@ export const App = (): ReactElement => {
                     videoId={status.videoId}
                     active={active}
                     unmuted={active && sound}
+                    controls={controls}
                     onSelect={() => {
                       if (!active) track('select_channel', channel.key);
                       setSoloed((current) => (current === channel.id ? undefined : channel.id));
@@ -166,5 +302,6 @@ export const App = (): ReactElement => {
         {chatShown && soloedStatus?.state === 'live' && <Chat videoId={soloedStatus.videoId} />}
       </div>
     </main>
+    </>
   );
 };
