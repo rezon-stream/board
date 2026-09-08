@@ -20,6 +20,8 @@ import { Tile } from './Tile';
 
 const SPLASH_INTERVAL_MS = 24 * 60 * 60 * 1_000;
 const SPLASH_STORAGE_KEY = 'splash:last-shown';
+const ONLINE_INTERVAL_MS = 30_000;
+const ONLINE_STORAGE_KEY = 'online:id';
 
 const isSplashDue = (): boolean => {
   const lastShown = Number(localStorage.getItem(SPLASH_STORAGE_KEY));
@@ -30,6 +32,7 @@ export const App = (): ReactElement => {
   const [statuses, setStatuses] = useState<ChannelStatus[]>();
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string>();
+  const [online, setOnline] = useState<number>();
   const initial = useMemo(readView, []);
   const [started, setStarted] = useState<View['started']>(initial.started);
   const [soloed, setSoloed] = useState(initial.solo);
@@ -88,6 +91,48 @@ export const App = (): ReactElement => {
       document.removeEventListener('visibilitychange', tick);
     };
   }, [poll]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const heartbeat = async () => {
+      try {
+        let id = localStorage.getItem(ONLINE_STORAGE_KEY);
+        if (id === null) {
+          id = crypto.randomUUID();
+          localStorage.setItem(ONLINE_STORAGE_KEY, id);
+        }
+        id = localStorage.getItem(ONLINE_STORAGE_KEY) ?? id;
+
+        const response = await fetch('/api/online', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        if (!response.ok) throw new Error(`/api/online ответил ${response.status}`);
+        const result: unknown = await response.json();
+        const count =
+          typeof result === 'object' &&
+          result !== null &&
+          'count' in result &&
+          typeof result.count === 'number'
+            ? result.count
+            : undefined;
+        if (count === undefined || !Number.isInteger(count) || count < 1) {
+          throw new Error('/api/online вернул неверный count');
+        }
+        if (!cancelled) setOnline(count);
+      } catch {
+        if (!cancelled) setOnline(undefined);
+      }
+    };
+
+    void heartbeat();
+    const timer = window.setInterval(() => void heartbeat(), ONLINE_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const start = (id: string) => {
     track('start_channel', keyOf(id));
@@ -176,6 +221,7 @@ export const App = (): ReactElement => {
         <div className="brand">
           <h1>Pattaya Stream</h1>
           {polling && <span className="polling" role="status" aria-label="Опрашиваем каналы" />}
+          {online !== undefined && <span className="online">{online} онлайн</span>}
         </div>
         <div className="toggles">
           <button aria-pressed={sound} onClick={() => setSound((on) => !on)}>

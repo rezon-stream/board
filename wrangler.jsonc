@@ -3,6 +3,12 @@
   "name": "pattaya-stream",
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-13",
+  "durable_objects": {
+    "bindings": [{ "name": "ONLINE", "class_name": "OnlinePresence" }]
+  },
+  "exports": {
+    "OnlinePresence": { "type": "durable-object", "storage": "sqlite" }
+  },
   "assets": {
     "directory": "./dist/",
     "not_found_handling": "404-page",

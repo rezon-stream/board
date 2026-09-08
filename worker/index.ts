@@ -1,3 +1,4 @@
+import { DurableObject } from 'cloudflare:workers';
 import { CHANNELS } from '../src/lib/channels';
 import type { ChannelStatus, Probe } from '../src/lib/status';
 
@@ -6,6 +7,47 @@ const USER_AGENT = 'Twitterbot/1.0';
 const HEAD_BYTES = 8192;
 const TTL_SECONDS = 120;
 const TTL_LIVE_SECONDS = 600;
+const ONLINE_TTL_SECONDS = 60;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+interface Env {
+  ONLINE: DurableObjectNamespace<OnlinePresence>;
+}
+
+export class OnlinePresence extends DurableObject<Env> {
+  async fetch(request: Request): Promise<Response> {
+    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+    if (request.headers.get('content-type')?.split(';', 1)[0] !== 'application/json') {
+      return new Response('Expected application/json', { status: 415 });
+    }
+
+    let input: unknown;
+    try {
+      input = await request.json();
+    } catch {
+      return new Response('Invalid JSON', { status: 400 });
+    }
+    const id =
+      typeof input === 'object' && input !== null && 'id' in input && typeof input.id === 'string'
+        ? input.id
+        : undefined;
+    if (id === undefined || !UUID_PATTERN.test(id)) return new Response('Invalid id', { status: 400 });
+
+    const sql = this.ctx.storage.sql;
+    const now = Math.floor(Date.now() / 1_000);
+    sql.exec('CREATE TABLE IF NOT EXISTS presence (id TEXT PRIMARY KEY, seen_at INTEGER NOT NULL)');
+    sql.exec('CREATE INDEX IF NOT EXISTS presence_seen_at ON presence (seen_at)');
+    sql.exec('DELETE FROM presence WHERE seen_at < ?', now - ONLINE_TTL_SECONDS);
+    sql.exec(
+      'INSERT INTO presence (id, seen_at) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET seen_at = excluded.seen_at',
+      id,
+      now,
+    );
+    const { count } = sql.exec<{ count: number }>('SELECT COUNT(*) AS count FROM presence').one();
+    return Response.json({ count }, { headers: { 'cache-control': 'no-store' } });
+  }
+}
+
 
 const parseHead = (head: string): Probe => {
   const canonical = head.match(/<link rel="canonical" href="([^"]*)"/)?.[1];
@@ -66,8 +108,11 @@ const probeCached = async (id: string): Promise<Probe> => {
 };
 
 export default {
-  fetch: async (request) => {
+  fetch: async (request, env) => {
     const url = new URL(request.url);
+    if (url.pathname === '/api/online') {
+      return env.ONLINE.getByName('global').fetch(request);
+    }
     if (url.pathname !== '/api/live') {
       return new Response('Not found', { status: 404 });
     }
@@ -79,4 +124,4 @@ export default {
     );
     return Response.json(statuses, { headers: { 'cache-control': 'no-store' } });
   },
-} satisfies ExportedHandler;
+} satisfies ExportedHandler<Env>;

@@ -195,6 +195,23 @@ main {
   animation: blink 1s ease-in-out infinite;
 }
 
+.online {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #81c995;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.online::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
 @keyframes blink {
   50% {
     opacity: 0.15;
