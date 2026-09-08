@@ -261,31 +261,55 @@ main {
 }
 
 /* Keep player nodes mounted while CSS moves the active channel above the strip. */
-.grid.zoomed {
+.grid.solo-xl {
   grid-template-columns: repeat(auto-fit, minmax(max(80px, calc((100% + var(--gap)) / var(--channel-count) - var(--gap))), 1fr));
   grid-template-rows: minmax(240px, 1fr);
   grid-auto-rows: max-content;
   align-content: stretch;
 }
 
-.grid.zoomed .cell.active {
+.grid.solo-xl .cell.active {
   grid-column: 1 / -1;
   order: -2;
   align-self: stretch;
 }
 
-.grid.zoomed .cell:not(.active) {
+.grid.solo-xl .cell:not(.active) {
   grid-column: auto;
   order: 0;
 }
 
-.grid.zoomed .cell.active .tile {
+.grid.solo-xl .cell.active .tile {
   height: 100%;
   aspect-ratio: auto;
 }
 
-.grid.zoomed .cell:not(.active) .tile {
+.grid.solo-xl .cell:not(.active) .tile {
   min-height: 96px;
+}
+
+.solo-toggle {
+  display: none;
+}
+
+@media (min-width: 701px) {
+  .solo-toggle {
+    display: inline-block;
+  }
+
+  .grid.solo-x4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .grid.solo-x4 .cell {
+    grid-column: auto;
+  }
+
+  .grid.solo-x4 .cell.active {
+    grid-column: span 2;
+    grid-row: span 2;
+    order: -1;
+  }
 }
 
 .cell {
@@ -442,7 +466,7 @@ main {
     order: -2;
   }
 
-  .stage:has(> .chat) .grid.zoomed .cell.active {
+  .stage:has(> .chat) .grid.solo-xl .cell.active {
     min-height: 240px;
   }
 
@@ -525,7 +549,7 @@ main {
   font-size: 13px;
 }
 
-.grid.zoomed .cell:not(.active) .tile-sound {
+.grid.solo-xl .cell:not(.active) .tile-sound {
   display: none;
 }
 

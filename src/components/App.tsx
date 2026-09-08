@@ -37,7 +37,7 @@ export const App = (): ReactElement => {
   const [started, setStarted] = useState<View['started']>(initial.started);
   const [soloed, setSoloed] = useState(initial.solo);
   const [chatShown, setChatShown] = useState(initial.chat);
-  const [zoomed, setZoomed] = useState(initial.zoom);
+  const [zoom, setZoom] = useState(initial.zoom);
   const [sound, setSound] = useState(initial.sound);
   const [controls, setControls] = useState(false);
   const [splashShown, setSplashShown] = useState(isSplashDue);
@@ -55,8 +55,8 @@ export const App = (): ReactElement => {
   }, [splashLoaded]);
 
   useEffect(
-    () => writeView({ started, chat: chatShown, zoom: zoomed, sound, order, solo: soloed }),
-    [started, chatShown, zoomed, sound, order, soloed],
+    () => writeView({ started, chat: chatShown, zoom, sound, order, solo: soloed }),
+    [started, chatShown, zoom, sound, order, soloed],
   );
 
   // A shared link can arrive with a channel already active, and that activation never
@@ -199,7 +199,7 @@ export const App = (): ReactElement => {
   const soloedStatus = started.includes(soloed ?? '')
     ? statuses?.find((status) => status.id === soloed)
     : undefined;
-  const focused = zoomed && soloedStatus?.state === 'live';
+  const focused = zoom !== undefined && soloedStatus?.state === 'live';
 
   return (
     <>
@@ -233,8 +233,19 @@ export const App = (): ReactElement => {
           <button aria-pressed={chatShown} onClick={() => setChatShown((shown) => !shown)}>
             Чат
           </button>
-          <button aria-pressed={zoomed} onClick={() => setZoomed((on) => !on)}>
-            Увеличивать активный
+          <button
+            className="solo-toggle"
+            aria-pressed={zoom === 'xl'}
+            onClick={() => setZoom((current) => (current === 'xl' ? undefined : 'xl'))}
+          >
+            Соло XL
+          </button>
+          <button
+            className="solo-toggle"
+            aria-pressed={zoom === 'x4'}
+            onClick={() => setZoom((current) => (current === 'x4' ? undefined : 'x4'))}
+          >
+            Соло X4
           </button>
           <a
             className="github"
@@ -254,7 +265,7 @@ export const App = (): ReactElement => {
 
       <div className="stage">
         <section
-          className={focused ? 'grid zoomed' : 'grid'}
+          className={focused ? `grid solo-${zoom}` : 'grid'}
           style={{ '--channel-count': Math.max(1, CHANNELS.length - 1) } as CSSProperties}
           aria-label="Каналы"
         >

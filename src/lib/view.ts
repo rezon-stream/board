@@ -5,7 +5,7 @@ export type View = {
   /** Channels explicitly started by the viewer. */
   readonly started: readonly string[];
   readonly chat: boolean;
-  readonly zoom: boolean;
+  readonly zoom: 'xl' | 'x4' | undefined;
   readonly sound: boolean;
   /** Full channel sequence, expressed as stable internal ids. */
   readonly order: readonly string[];
@@ -32,10 +32,11 @@ export const readView = (): View => {
   const ordered = idsForCodes(params.get('order'));
   const order = [...ordered, ...CHANNELS.map((channel) => channel.id).filter((id) => !ordered.includes(id))];
   const solo = CHANNELS.find((channel) => channel.code === params.get('solo'))?.id;
+  const zoom = params.get('zoom');
   return {
     started,
     chat: params.has('chat'),
-    zoom: params.has('zoom'),
+    zoom: zoom === 'x4' ? 'x4' : params.has('zoom') ? 'xl' : undefined,
     sound: params.has('sound'),
     order,
     solo: solo !== undefined && started.includes(solo) ? solo : undefined,
@@ -51,7 +52,7 @@ export const writeView = ({ started, chat, zoom, sound, order, solo }: View): vo
   const parts = [
     cams === '' ? '' : `cams=${cams}`,
     chat ? 'chat' : '',
-    zoom ? 'zoom' : '',
+    zoom === undefined ? '' : zoom === 'xl' ? 'zoom' : 'zoom=x4',
     sound ? 'sound' : '',
     orderChanged ? `order=${order.map(codeOf).join(',')}` : '',
     solo === undefined ? '' : `solo=${codeOf(solo)}`,
