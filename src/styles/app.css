@@ -220,7 +220,13 @@ main {
 
 .github {
   display: flex;
-  color: #9aa2ab;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border: 1px solid #2f6fdb;
+  border-radius: 6px;
+  background: transparent;
+  color: #2f6fdb;
 }
 
 .github:hover {
@@ -383,7 +389,32 @@ main {
   }
 
   .toggles {
-    flex-wrap: wrap;
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .toggles > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .bar .toggles button,
+  .bar .toggles .github {
+    padding-inline: clamp(4px, 1.5vw, 10px);
+    font-size: clamp(10px, 3vw, 15px);
+    white-space: nowrap;
+  }
+
+  .bar .toggles button {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .toggles .github {
+    align-self: stretch;
+    flex-shrink: 0;
+    padding-block: 0;
   }
 
   .stage {
